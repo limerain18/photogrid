@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PhotoGrid — Share Your World</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="script.js"></script>
+</head>
+<body>
+
+  <nav class="navbar">
+    <a href="index.html" class="logo">Photo<span>Grid</span></a>
+    <div class="nav-links" id="navLinks">
+      <a href="index.html" class="nav-link active">Feed</a>
+      <a href="profile.html" class="nav-link">My Profile</a>
+      <div class="nav-user" id="navUser" style="display:none">
+        <div class="nav-avatar" id="navAvatar"></div>
+        <span id="navName"></span>
+      </div>
+      <button class="btn-upload" id="openUploadModal">+ Upload</button>
+    </div>
+    <button class="hamburger" id="hamburger">&#9776;</button>
+  </nav>
+
+  <header class="hero">
+    <div class="hero-text">
+      <h1>Share Your World,<br/><em>One Frame at a Time.</em></h1>
+      <p>A real-time gallery — post a photo and everyone sees it instantly.</p>
+      <button class="btn-hero" id="openUploadModalHero">Start Posting</button>
+    </div>
+    <div class="hero-visual">
+      <div class="floating-card c1"><img src="https://picsum.photos/seed/a1/300/400" alt=""/></div>
+      <div class="floating-card c2"><img src="https://picsum.photos/seed/b2/280/360" alt=""/></div>
+      <div class="floating-card c3"><img src="https://picsum.photos/seed/c3/260/340" alt=""/></div>
+    </div>
+  </header>
+
+  <section class="feed-section">
+    <div class="feed-header">
+      <h2>Live Feed</h2>
+      <span class="live-badge">● LIVE</span>
+    </div>
+    <div class="photo-grid" id="photoGrid"></div>
+    <div class="loading-state" id="loadingState"><div class="spinner"></div><p>Loading photos…</p></div>
+    <div class="empty-state" id="emptyState" style="display:none;"><span>📷</span><p>No posts yet. Be the first to upload!</p></div>
+  </section>
+
+  <!-- UPLOAD MODAL -->
+  <div class="modal-overlay" id="uploadModal">
+    <div class="modal">
+      <button class="modal-close" id="closeModal">&times;</button>
+      <h2>New Post</h2>
+      <div class="drop-zone" id="dropZone">
+        <input type="file" id="fileInput" accept="image/*" multiple hidden />
+        <div class="drop-icon">🖼️</div>
+        <p>Drag &amp; drop your photo here</p>
+        <span>or</span>
+        <button class="btn-browse" id="browseBtn">Browse Files</button>
+        <p class="file-types">JPG, PNG, GIF, WEBP — Max 5MB each</p>
+      </div>
+      <div class="preview-container" id="previewContainer"></div>
+      <div class="form-group">
+        <label>Your Name</label>
+        <input type="text" id="userName" placeholder="e.g. Alex Rivera" maxlength="40"/>
+      </div>
+      <div class="form-group">
+        <label>Caption</label>
+        <textarea id="caption" placeholder="Write a caption…" rows="3" maxlength="200"></textarea>
+      </div>
+      <button class="btn-post" id="postBtn">Post Photo</button>
+    </div>
+  </div>
+
+  <!-- DELETE CONFIRM -->
+  <div class="modal-overlay" id="deleteModal">
+    <div class="modal modal-sm">
+      <h2>Delete Post?</h2>
+      <p class="delete-msg">This will permanently remove the photo for everyone.</p>
+      <div class="delete-actions">
+        <button class="btn-cancel" id="cancelDelete">Cancel</button>
+        <button class="btn-delete-confirm" id="confirmDelete">Yes, Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LIGHTBOX -->
+  <div class="lightbox" id="lightbox">
+    <button class="lightbox-close" id="lightboxClose">&times;</button>
+    <button class="lightbox-nav prev" id="lightboxPrev">&#8249;</button>
+    <div class="lightbox-content">
+      <img id="lightboxImg" src="" alt=""/>
+      <div class="lightbox-info">
+        <div class="lightbox-user">
+          <div class="avatar-lg" id="lightboxAvatar"></div>
+          <div><strong id="lightboxUser"></strong><span id="lightboxDate"></span></div>
+        </div>
+        <p id="lightboxCaption"></p>
+        <div class="lightbox-actions">
+          <button class="like-btn" id="lightboxLike">♥ <span id="likeCount">0</span></button>
+          <button class="lightbox-delete-btn" id="lightboxDeleteBtn" style="display:none">🗑 Delete</button>
+        </div>
+      </div>
+    </div>
+    <button class="lightbox-nav next" id="lightboxNext">&#8250;</button>
+  </div>
+
+  <!-- WELCOME / NAME SETUP -->
+  <div class="modal-overlay" id="nameModal">
+    <div class="modal modal-sm">
+      <h2>Welcome to PhotoGrid 👋</h2>
+      <p class="setup-msg">Pick a display name so others can see who posted.</p>
+      <div class="form-group" style="margin-top:1.25rem">
+        <label>Your Name</label>
+        <input type="text" id="setupName" placeholder="e.g. Jordan Lee" maxlength="40"/>
+      </div>
+      <button class="btn-post" id="saveNameBtn">Let's Go →</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <footer class="footer">
+    <p>PhotoGrid &copy; 2025 — A real-time photo community.</p>
+    <p class="footer-sub">Powered by Firebase · <a href="https://github.com" target="_blank">GitHub Pages</a></p>
+  </footer>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

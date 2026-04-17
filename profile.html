@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>My Profile — PhotoGrid</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <nav class="navbar">
+    <a href="index.html" class="logo">Photo<span>Grid</span></a>
+    <div class="nav-links" id="navLinks">
+      <a href="index.html" class="nav-link">Feed</a>
+      <a href="profile.html" class="nav-link active">My Profile</a>
+      <div class="nav-user" id="navUser" style="display:none">
+        <div class="nav-avatar" id="navAvatar"></div>
+        <span id="navName"></span>
+      </div>
+      <button class="btn-upload" id="openUploadModal">+ Upload</button>
+    </div>
+    <button class="hamburger" id="hamburger">&#9776;</button>
+  </nav>
+
+  <section class="profile-hero">
+    <div class="profile-banner"></div>
+    <div class="profile-info">
+      <div class="profile-avatar" id="profileAvatar">👤</div>
+      <div class="profile-meta">
+        <h1 id="profileName">Your Profile</h1>
+        <p id="profileBio">Photographer &amp; visual storyteller</p>
+        <div class="profile-stats">
+          <div class="stat"><span id="statPosts">0</span><label>Posts</label></div>
+          <div class="stat"><span id="statLikes">0</span><label>Likes</label></div>
+        </div>
+      </div>
+      <button class="btn-edit" id="editProfileBtn">Edit Profile</button>
+    </div>
+  </section>
+
+  <!-- Edit Profile Modal -->
+  <div class="modal-overlay" id="editModal">
+    <div class="modal modal-sm">
+      <button class="modal-close" id="closeEditModal">&times;</button>
+      <h2>Edit Profile</h2>
+      <div class="form-group">
+        <label>Display Name</label>
+        <input type="text" id="editName" placeholder="Your name" maxlength="40"/>
+      </div>
+      <div class="form-group">
+        <label>Bio</label>
+        <textarea id="editBio" rows="2" placeholder="Tell us about yourself…" maxlength="120"></textarea>
+      </div>
+      <button class="btn-post" id="saveProfileBtn">Save Changes</button>
+    </div>
+  </div>
+
+  <section class="feed-section">
+    <div class="feed-header"><h2>My Posts</h2></div>
+    <div class="photo-grid" id="myGrid"></div>
+    <div class="loading-state" id="myLoading"><div class="spinner"></div><p>Loading…</p></div>
+    <div class="empty-state" id="myEmptyState" style="display:none;">
+      <span>📷</span>
+      <p>You haven't posted anything yet.</p>
+      <a href="index.html" class="btn-hero" style="display:inline-block;margin-top:1.25rem">Go to Feed</a>
+    </div>
+  </section>
+
+  <!-- UPLOAD MODAL -->
+  <div class="modal-overlay" id="uploadModal">
+    <div class="modal">
+      <button class="modal-close" id="closeModal">&times;</button>
+      <h2>New Post</h2>
+      <div class="drop-zone" id="dropZone">
+        <input type="file" id="fileInput" accept="image/*" multiple hidden />
+        <div class="drop-icon">🖼️</div>
+        <p>Drag &amp; drop your photo here</p>
+        <span>or</span>
+        <button class="btn-browse" id="browseBtn">Browse Files</button>
+        <p class="file-types">JPG, PNG, GIF, WEBP — Max 5MB each</p>
+      </div>
+      <div class="preview-container" id="previewContainer"></div>
+      <div class="form-group">
+        <label>Your Name</label>
+        <input type="text" id="userName" maxlength="40"/>
+      </div>
+      <div class="form-group">
+        <label>Caption</label>
+        <textarea id="caption" placeholder="Write a caption…" rows="3" maxlength="200"></textarea>
+      </div>
+      <button class="btn-post" id="postBtn">Post Photo</button>
+    </div>
+  </div>
+
+  <!-- DELETE CONFIRM -->
+  <div class="modal-overlay" id="deleteModal">
+    <div class="modal modal-sm">
+      <h2>Delete Post?</h2>
+      <p class="delete-msg">This will permanently remove the photo for everyone.</p>
+      <div class="delete-actions">
+        <button class="btn-cancel" id="cancelDelete">Cancel</button>
+        <button class="btn-delete-confirm" id="confirmDelete">Yes, Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LIGHTBOX -->
+  <div class="lightbox" id="lightbox">
+    <button class="lightbox-close" id="lightboxClose">&times;</button>
+    <button class="lightbox-nav prev" id="lightboxPrev">&#8249;</button>
+    <div class="lightbox-content">
+      <img id="lightboxImg" src="" alt=""/>
+      <div class="lightbox-info">
+        <div class="lightbox-user">
+          <div class="avatar-lg" id="lightboxAvatar"></div>
+          <div><strong id="lightboxUser"></strong><span id="lightboxDate"></span></div>
+        </div>
+        <p id="lightboxCaption"></p>
+        <div class="lightbox-actions">
+          <button class="like-btn" id="lightboxLike">♥ <span id="likeCount">0</span></button>
+          <button class="lightbox-delete-btn" id="lightboxDeleteBtn" style="display:none">🗑 Delete</button>
+        </div>
+      </div>
+    </div>
+    <button class="lightbox-nav next" id="lightboxNext">&#8250;</button>
+  </div>
+
+  <!-- WELCOME / NAME SETUP -->
+  <div class="modal-overlay" id="nameModal">
+    <div class="modal modal-sm">
+      <h2>Welcome to PhotoGrid 👋</h2>
+      <p class="setup-msg">Pick a display name so others can see who posted.</p>
+      <div class="form-group" style="margin-top:1.25rem">
+        <label>Your Name</label>
+        <input type="text" id="setupName" placeholder="e.g. Jordan Lee" maxlength="40"/>
+      </div>
+      <button class="btn-post" id="saveNameBtn">Let's Go →</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <footer class="footer">
+    <p>PhotoGrid &copy; 2025 — A real-time photo community.</p>
+  </footer>
+
+  <script type="module" src="js/app.js"></script>
+  <script type="module" src="js/profile.js"></script>
+</body>
+</html>
