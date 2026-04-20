@@ -177,13 +177,21 @@ function renderGrid(posts) {
 
 // ── Firebase listener ───────────────────────────────
 async function startListening() {
+  const load = document.getElementById("loadingState");
+  const empty = document.getElementById("emptyState");
+
+  if (load) load.style.display = "block";
+
   const { data, error } = await supabase
     .from("posts")
     .select("*")
     .order("date", { ascending: true });
 
+  if (load) load.style.display = "none";
+
   if (error) {
-    console.error("load posts error:", error);
+    console.error("load error:", error);
+    if (empty) empty.style.display = "block";
     return;
   }
 
