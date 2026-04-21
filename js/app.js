@@ -14,7 +14,7 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 // ─────────────────────────────────────────────
 //  🔥 REPLACE WITH YOUR SUPABASE CONFIG
 // ─────────────────────────────────────────────
-const SUPABASE_URL = "https://qaocsknhjnmqpgnrursm.supabase.co/";
+const SUPABASE_URL = "https://qaocsknhjnmqpgnrursm.supabase.co";
 const SUPABASE_KEY = "sb_publishable_XsMY_U9QPznyfufjHzA_9Q_A96jiuWG";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -146,6 +146,8 @@ let cachedPosts = []; // [{firebaseKey, ...postData}]
 
 // ── Create card DOM ─────────────────────────────────
 function createCard(post, firebaseKey) {
+  console.log("CREATE CARD:", post);
+
   const isOwner = post.user === getCurrentUser();
   const liked   = (post.likedBy||{})[getSessionId()];
 
@@ -157,7 +159,7 @@ function createCard(post, firebaseKey) {
     <img src="${post.src}" alt="${escHtml(post.caption||'')}" loading="lazy"/>
     ${isOwner ? `<button class="card-delete-btn" title="Delete post">🗑</button>` : ''}
     <div class="card-body">
-      <div class="card-meta">
+      <div class="card-meta clickable-user" data-user="${post.user}">
         <div class="avatar" style="background:${colorFromName(post.user)}">${getInitials(post.user)}</div>
         <span class="card-user">${escHtml(post.user||'Anonymous')}</span>
         <span class="card-date">${formatDate(post.date)}</span>
@@ -186,6 +188,15 @@ function createCard(post, firebaseKey) {
   card.querySelector('img').addEventListener('click', () => openLightbox(firebaseKey));
   card.querySelector('.card-caption')?.addEventListener('click', () => openLightbox(firebaseKey));
 
+  card.querySelector('.clickable-user')?.addEventListener('click', (e) => {
+  e.stopPropagation();
+
+  const username = post.user?.trim();
+  console.log("CLICK USER:", username);
+
+  window.location.href = `profile.html?user=${encodeURIComponent(username)}`;
+});
+
   return card;
 }
 
@@ -196,22 +207,24 @@ function countLikes(likedBy) {
 
 // ── Render grid ─────────────────────────────────────
 function renderGrid(posts) {
+  console.log("GRID ELEMENT:", document.getElementById("photoGrid"));
+  console.log("POSTS TO RENDER:", posts);
+
   const grid  = document.getElementById('photoGrid');
   const empty = document.getElementById('emptyState');
   const load  = document.getElementById('loadingState');
 
   if(!grid) return;
+
   if(load) load.style.display = 'none';
   grid.innerHTML = '';
 
-  if(posts.length === 0) {
-    if(empty) empty.style.display = 'block';
-    return;
-  }
-  if(empty) empty.style.display = 'none';
+  if (empty) empty.style.display = 'none';
 
   // newest first
-  [...posts].reverse().forEach(({key, data}) => grid.appendChild(createCard(data, key)));
+  posts.forEach(({ key, data }) =>
+  grid.appendChild(createCard(data, key))
+);
 }
 
 // ── Firebase listener ───────────────────────────────
@@ -223,23 +236,49 @@ async function startListening() {
 
   try {
     const { data, error } = await supabase
-      .from("posts")
-      .select("*")
-      .order("date", { ascending: true });
+  .from("posts")
+  .select("*")
+  .order("date", { ascending: false });
 
-    console.log("QUERY RESULT:", data);
-    console.log("QUERY ERROR:", error);
+console.log("QUERY RESULT:", data);
+console.log("QUERY ERROR:", error);
 
-    if (error) {
-      console.error("SUPABASE ERROR:", error);
-      return;
-    }
+if (error) {
+  console.error("SUPABASE ERROR:", error);
+  return;
+}
 
-    const currentUser = localStorage.getItem("pg_username");
+console.log("ALL POSTS:", data.map(p => p.user_name));
+
+const params = new URLSearchParams(window.location.search);
+const profileUser = params.get("user");
+const isProfilePage = window.location.pathname.includes("profile");
+
+console.log("ALL POSTS:", data.map(p => p.user_name));
+console.log("PROFILE USER:", profileUser);
+console.log("IS PROFILE PAGE:", isProfilePage);
+
+console.log("PROFILE USER:", profileUser);
+console.log("CURRENT URL:", window.location.href);
+console.log("IS PROFILE PAGE:", isProfilePage);
+
+cachedPosts = [];
 
 cachedPosts = (data || [])
-  .filter(post => !window.location.pathname.includes("profile") 
-    || post.user_name === currentUser)
+  .filter(post => {
+    const postUser = post.user_name?.trim().toLowerCase();
+    const targetUser = profileUser?.trim().toLowerCase();
+
+    console.log("POST USER DB:", `"${postUser}"`);
+    console.log("TARGET URL:", `"${targetUser}"`);
+    console.log("MATCH:", postUser === targetUser);
+
+    if (isProfilePage && targetUser) {
+      return postUser === targetUser;
+    }
+
+    return true;
+  })
   .map(post => ({
     key: String(post.id),
     data: {
@@ -250,6 +289,8 @@ cachedPosts = (data || [])
       likedBy: post.liked_by || {}
     }
   }));
+
+console.log("FILTERED POSTS:", cachedPosts);
 
     console.log("SEBELUM RENDER");
     renderGrid(cachedPosts);
@@ -263,33 +304,50 @@ cachedPosts = (data || [])
 // ── Toggle like ─────────────────────────────────────
 async function toggleLike(key, post, card) {
   const sid = getSessionId();
-  const liked = !!(post.likedBy||{})[sid];
 
-  async function toggleLike(key, post, card) {
-  const sid = getSessionId();
-
-  post.likedBy = post.likedBy || {};
-
-  if (post.likedBy[sid]) {
-    delete post.likedBy[sid];
-  } else {
-    post.likedBy[sid] = true;
-  }
-
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("posts")
-    .update({
-      liked_by: post.likedBy
-    })
-    .eq("id", key);
+    .select("liked_by")
+    .eq("id", key)
+    .single();
 
   if (error) {
-    console.error("LIKE ERROR:", error);
+    console.error("LIKE FETCH ERROR:", error);
     return;
   }
 
-  await startListening();
-}
+  let likedBy = data.liked_by || {};
+
+  // kalau sudah like = unlike
+  if (likedBy[sid]) {
+    delete likedBy[sid];
+  } else {
+    likedBy[sid] = true;
+  }
+
+  const { error: updateError } = await supabase
+    .from("posts")
+    .update({ liked_by: likedBy })
+    .eq("id", key);
+
+  if (updateError) {
+    console.error("LIKE UPDATE ERROR:", updateError);
+    return;
+  }
+
+  // update cache biar langsung refresh UI
+  const targetPost = cachedPosts.find(p => p.key === String(key));
+  if (targetPost) {
+    targetPost.data.likedBy = likedBy;
+  }
+
+  renderGrid(cachedPosts);
+
+  // kalau lightbox lagi kebuka
+  const lightbox = document.getElementById("lightbox");
+  if (lightbox?.classList.contains("open")) {
+    renderLightbox();
+  }
 }
 
 // ── Delete ──────────────────────────────────────────
@@ -415,10 +473,7 @@ document.getElementById("bannerInput")?.addEventListener("change", e => {
 });
 
 async function submitPost() {
-  const userName =
-    document.getElementById('userName')?.value.trim() ||
-    getCurrentUser() ||
-    'Anonymous';
+  const userName = getCurrentUser().trim() || 'Anonymous';
 
   const caption =
     document.getElementById('caption')?.value.trim() || '';
@@ -459,6 +514,8 @@ async function submitPost() {
       date: new Date().toISOString(),
       liked_by: {}
     };
+
+    console.log("POST YANG MAU DISIMPAN:", post);
 
     const { error: insertError } = await supabase
       .from('posts')
@@ -550,10 +607,14 @@ document.getElementById('lightboxNext')?.addEventListener('click', ()=>{
   const d=getDisplayedPosts();
   if(lbIndex<d.length-1){ lbIndex++; renderLightbox(); }
 });
-document.getElementById('lightboxLike')?.addEventListener('click', ()=>{
+document.getElementById('lightboxLike')?.addEventListener('click', async () => {
   const key = document.getElementById('lightboxImg').dataset.key;
-  const p = cachedPosts.find(x=>x.key===key);
-  if(p) toggleLike(key, p.data, null);
+  const p = cachedPosts.find(x => x.key === key);
+
+  if (!p) return;
+
+  await toggleLike(key, p.data, null);
+  renderLightbox();
 });
 document.getElementById('lightboxDeleteBtn')?.addEventListener('click', ()=>{
   const key = document.getElementById('lightboxImg').dataset.key;
@@ -575,29 +636,52 @@ document.getElementById('hamburger')?.addEventListener('click', ()=>{
 });
 // Load Profile
 async function loadProfile() {
-  const username = getCurrentUser();
+  const params = new URLSearchParams(window.location.search);
+  const username = params.get("user") || getCurrentUser();
+
   if (!username) return;
 
   const { data, error } = await supabase
     .from("profiles")
     .select("*")
     .eq("username", username)
-    .single();
+    .maybeSingle();
 
   if (error) {
-    console.error(error);
+    console.error("PROFILE ERROR:", error);
     return;
   }
 
-  if (data.avatar_url) {
-    document.getElementById("avatarPreview").src = data.avatar_url;
+  const avatar = document.getElementById("avatarPreview");
+  const banner = document.getElementById("bannerPreview");
+  const nameEl = document.getElementById("profileName");
+  const usernameEl = document.getElementById("profileUsername");
+
+  if (avatar && data?.avatar_url) {
+    avatar.src = data.avatar_url;
   }
 
-  if (data.banner_url) {
-    document.getElementById("bannerPreview").src = data.banner_url;
+  if (banner && data?.banner_url) {
+    banner.src = data.banner_url;
   }
 
-  loadProfilePosts();
+  if (nameEl) {
+    nameEl.textContent = username;
+  }
+
+  if (usernameEl) {
+    usernameEl.textContent = `@${username}`;
+  }
+
+  const title = document.getElementById("profilePostsTitle");
+
+  if (title) {
+    if (username === getCurrentUser()) {
+      title.textContent = "My Posts";
+    } else {
+      title.textContent = `${username}'s Posts`;
+    }
+  }
 }
 
 // ── Init ─────────────────────────────────────────────
@@ -610,6 +694,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     checkNameSetup();
   } else {
     updateNavUser();
+
+    if (window.location.pathname.includes("profile")) {
+      await loadProfile();
+    }
+
     await startListening();
   }
 
