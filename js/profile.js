@@ -186,7 +186,8 @@ function renderMyGrid(posts) {
 }
 
 async function loadProfile() {
-  const username = localStorage.getItem("pg_username");
+  const params = new URLSearchParams(window.location.search);
+  const username = params.get("user") || getCurrentUser();
 
   if (!username) return;
 
