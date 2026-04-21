@@ -12,21 +12,12 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
 
 // ─────────────────────────────────────────────
-//  🔥 REPLACE WITH YOUR FIREBASE CONFIG
+//  🔥 REPLACE WITH YOUR SUPABASE CONFIG
 // ─────────────────────────────────────────────
 const SUPABASE_URL = "https://qaocsknhjnmqpgnrursm.supabase.co/";
 const SUPABASE_KEY = "sb_publishable_XsMY_U9QPznyfufjHzA_9Q_A96jiuWG";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-
-let firebaseReady = true;
-
-// ── Local fallback when Firebase isn't configured ──
-const LOCAL_KEY = 'photogrid_posts_local';
-function loadLocalPosts() {
-  try { return JSON.parse(localStorage.getItem(LOCAL_KEY)) || []; } catch { return []; }
-}
-function saveLocalPosts(p) { localStorage.setItem(LOCAL_KEY, JSON.stringify(p)); }
 
 // ── Helpers ────────────────────────────────────────
 export function getInitials(name) {
@@ -274,28 +265,31 @@ async function toggleLike(key, post, card) {
   const sid = getSessionId();
   const liked = !!(post.likedBy||{})[sid];
 
-  if(firebaseReady) {
-    const likeRef = ref(db, `posts/${key}/likedBy/${sid}`);
-    if(liked) {
-      await remove(likeRef);
-    } else {
-      await update(ref(db,`posts/${key}/likedBy`), {[sid]: true});
-    }
-    // UI updates via onValue listener
+  async function toggleLike(key, post, card) {
+  const sid = getSessionId();
+
+  post.likedBy = post.likedBy || {};
+
+  if (post.likedBy[sid]) {
+    delete post.likedBy[sid];
   } else {
-    // local fallback
-    const posts = loadLocalPosts();
-    const p = posts.find(x=>x.id===key);
-    if(!p) return;
-    p.likedBy = p.likedBy || {};
-    if(liked) delete p.likedBy[sid]; else p.likedBy[sid]=true;
-    saveLocalPosts(posts);
-    const btn = card?.querySelector('.card-likes');
-    if(btn) {
-      btn.querySelector('span').textContent = countLikes(p.likedBy);
-      btn.classList.toggle('liked', !liked);
-    }
+    post.likedBy[sid] = true;
   }
+
+  const { error } = await supabase
+    .from("posts")
+    .update({
+      liked_by: post.likedBy
+    })
+    .eq("id", key);
+
+  if (error) {
+    console.error("LIKE ERROR:", error);
+    return;
+  }
+
+  await startListening();
+}
 }
 
 // ── Delete ──────────────────────────────────────────
@@ -320,27 +314,29 @@ document.getElementById('deleteModal')?.addEventListener('click', e => {
   }
 });
 document.getElementById('confirmDelete')?.addEventListener('click', async () => {
-  if(!pendingDeleteKey) return;
+  if (!pendingDeleteKey) return;
+
   const key = pendingDeleteKey;
   pendingDeleteKey = null;
-  document.getElementById('deleteModal').classList.remove('open');
 
-  // Close lightbox if open for this post
-  const lb = document.getElementById('lightbox');
-  if(lb.classList.contains('open') && document.getElementById('lightboxImg').dataset.key===key) {
-    lb.classList.remove('open');
-  }
+  document.getElementById('deleteModal').classList.remove('open');
   document.body.style.overflow = '';
 
-  if(firebaseReady) {
-    await remove(ref(db, `posts/${key}`));
-  } else {
-    const posts = loadLocalPosts().filter(p=>p.id!==key);
-    saveLocalPosts(posts);
-    cachedPosts = cachedPosts.filter(p=>p.key!==key);
-    renderGrid(cachedPosts);
+  const { error } = await supabase
+    .from("posts")
+    .delete()
+    .eq("id", key);
+
+  if (error) {
+    console.error("DELETE ERROR:", error);
+    showToast("Gagal delete post");
+    return;
   }
-  showToast('Post deleted.');
+
+  cachedPosts = cachedPosts.filter(post => post.key !== String(key));
+  renderGrid(cachedPosts);
+
+  showToast("Post deleted");
 });
 
 // ── Upload modal ─────────────────────────────────────
