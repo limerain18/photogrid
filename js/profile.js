@@ -12,29 +12,6 @@ const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-function renderProfileHeader() {
-  const name = getCurrentUser();
-
-  const displayName = name || 'Your Profile';
-
-  document.getElementById('profileName').textContent = displayName;
-
-  const av = document.getElementById('profileAvatar');
-  av.textContent = getInitials(displayName);
-  av.style.background = colorFromName(displayName);
-  av.style.fontSize = '1.5rem';
-  av.style.color = '#fff';
-  av.style.display = 'flex';
-  av.style.alignItems = 'center';
-  av.style.justifyContent = 'center';
-
-  const ei = document.getElementById('editName');
-  const eb = document.getElementById('editBio');
-
-  if(ei) ei.value = name || '';
-  if(eb) eb.value = '';
-}
-
 // Edit profile modal
 document.getElementById('editProfileBtn')?.addEventListener('click', () => {
   document.getElementById('editModal').classList.add('open');
@@ -139,139 +116,73 @@ document.getElementById("saveProfileBtn")?.addEventListener("click", async () =>
 
   document.getElementById("editModal").classList.remove("open");
 
-  await loadProfile();
+  localStorage.setItem("pg_username", username);
 
-  showToast("Profile updated");
+   await loadProfile();
+   await loadMyPosts();
+
+showToast("Profile updated");
 });
 
-// ── Load my posts via Firebase ──────────────────────
-import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-// Reuse existing app if already initialized
-function getDB() {
-  // app.js already initialized Firebase; grab the existing instance
-  const apps = getApps();
-  if(apps.length === 0) return null;
-  return getDatabase(apps[0]);
-}
+async function loadMyPosts() {
+  const username = localStorage.getItem("pg_username");
 
-function createCard(post, key) {
-  // Minimal card for profile (no filter, always owner so show delete)
-  const card = document.createElement('div');
-  card.className = 'photo-card';
-  card.dataset.key = key;
+  if (!username) return;
 
-  card.innerHTML = `
-    <img src="${post.src}" alt="" loading="lazy"/>
-    <button class="card-delete-btn" title="Delete post">🗑</button>
-    <div class="card-body">
-      <div class="card-meta">
-        <div class="avatar" style="background:${colorFromName(post.user)}">${getInitials(post.user)}</div>
-        <span class="card-user">${post.user||'Anonymous'}</span>
-        <span class="card-date">${new Date(post.date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</span>
-      </div>
-      ${post.caption ? `<p class="card-caption">${post.caption}</p>` : ''}
-      <div class="card-footer">
-        <span style="font-size:0.82rem;color:var(--text-muted)">♥ ${Object.keys(post.likedBy||{}).length}</span>
-      </div>
-    </div>`;
+  const { data, error } = await supabase
+    .from("posts")
+    .select("*")
+    .eq("user_name", username)
+    .order("date", { ascending: false });
 
-  card.querySelector('.card-delete-btn')?.addEventListener('click', e => {
-    e.stopPropagation();
-    openDeleteConfirm(key);
-  });
-
-  return card;
-}
-
-let pendingDeleteKey = null;
-function openDeleteConfirm(key) {
-  pendingDeleteKey = key;
-  document.getElementById('deleteModal').classList.add('open');
-  document.body.style.overflow = 'hidden';
-}
-document.getElementById('cancelDelete')?.addEventListener('click', () => {
-  pendingDeleteKey = null;
-  document.getElementById('deleteModal').classList.remove('open');
-  document.body.style.overflow = '';
-});
-document.getElementById('confirmDelete')?.addEventListener('click', async () => {
-  if(!pendingDeleteKey) return;
-  const key = pendingDeleteKey; pendingDeleteKey = null;
-  document.getElementById('deleteModal').classList.remove('open');
-  document.body.style.overflow = '';
-
-  const db2 = getDB();
-  if(db2) {
-    const { remove } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js");
-    await remove(ref(db2, `posts/${key}`));
-  } else {
-    // local fallback
-    const LOCAL_KEY = 'photogrid_posts_local';
-    const posts = JSON.parse(localStorage.getItem(LOCAL_KEY)||'[]').filter(p=>p.id!==key);
-    localStorage.setItem(LOCAL_KEY, JSON.stringify(posts));
-    loadMyPosts();
-  }
-  showToast('Post deleted.');
-});
-
-function loadMyPosts() {
-  const name = getCurrentUser();
-  const grid  = document.getElementById('myGrid');
-  const empty = document.getElementById('myEmptyState');
-  const load  = document.getElementById('myLoading');
-
-  if(!name) {
-    if(load) load.style.display='none';
-    if(empty){ empty.style.display='block'; empty.querySelector('p').textContent='Set a name to track your posts.'; }
+  if (error) {
+    console.error("LOAD POSTS ERROR:", error);
     return;
   }
 
-  const db2 = getDB();
-  if(!db2) {
-    // local fallback
-    const posts = JSON.parse(localStorage.getItem('photogrid_posts_local')||'[]')
-      .filter(p=>p.user===name);
-    renderMyGrid(posts.map(p=>({key:p.id,data:p})));
-    return;
-  }
-
-  const postsRef = ref(db2, 'posts');
-  onValue(postsRef, snap => {
-    const val = snap.val()||{};
-    const mine = Object.entries(val)
-      .filter(([,d])=>d.user===name)
-      .map(([key,data])=>({key,data}))
-      .sort((a,b)=>new Date(a.data.date)-new Date(b.data.date));
-    renderMyGrid(mine);
-  });
+  renderMyGrid(data || []);
 }
 
 function renderMyGrid(posts) {
-  const grid  = document.getElementById('myGrid');
-  const empty = document.getElementById('myEmptyState');
-  const load  = document.getElementById('myLoading');
+  const grid = document.getElementById("myGrid");
+  const empty = document.getElementById("myEmptyState");
+  const load = document.getElementById("myLoading");
 
-  if(load) load.style.display='none';
-  if(!grid) return;
-  grid.innerHTML = '';
+  if (load) load.style.display = "none";
+  if (!grid) return;
 
-  if(posts.length===0) {
-    if(empty) empty.style.display='block';
-    document.getElementById('statPosts').textContent='0';
-    document.getElementById('statLikes').textContent='0';
+  grid.innerHTML = "";
+
+  if (posts.length === 0) {
+    empty.style.display = "block";
+    document.getElementById("statPosts").textContent = "0";
+    document.getElementById("statLikes").textContent = "0";
     return;
   }
-  if(empty) empty.style.display='none';
 
-  let totalLikes=0;
-  [...posts].reverse().forEach(({key,data})=>{
-    totalLikes += Object.keys(data.likedBy||{}).length;
-    grid.appendChild(createCard(data,key));
+  empty.style.display = "none";
+
+  let totalLikes = 0;
+
+  posts.forEach((post) => {
+    totalLikes += Object.keys(post.liked_by || {}).length;
+
+    const card = document.createElement("div");
+    card.className = "photo-card";
+
+    card.innerHTML = `
+      <img src="${post.src}" alt="">
+      <div class="card-body">
+        <p>${post.caption || ""}</p>
+      </div>
+    `;
+
+    grid.appendChild(card);
   });
-  document.getElementById('statPosts').textContent=posts.length;
-  document.getElementById('statLikes').textContent=totalLikes;
+
+  document.getElementById("statPosts").textContent = posts.length;
+  document.getElementById("statLikes").textContent = totalLikes;
 }
 
 async function loadProfile() {
@@ -304,6 +215,12 @@ async function loadProfile() {
   document.getElementById("profileBio").textContent =
     data.bio || "Photographer & visual storyteller";
 
+  document.getElementById("editName").value =
+  data.display_name || username;
+
+  document.getElementById("editBio").value =
+  data.bio || "";
+
   const avatar = document.getElementById("profileAvatar");
   const banner = document.querySelector(".profile-banner");
 
@@ -322,6 +239,7 @@ async function loadProfile() {
 }
 
 // ── Init ──────────────────────────────────────────────
-renderProfileHeader();
-loadProfile();
-loadMyPosts();
+document.addEventListener("DOMContentLoaded", async () => {
+  await loadProfile();
+  await loadMyPosts();
+});
