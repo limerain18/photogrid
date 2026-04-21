@@ -1,28 +1,39 @@
 /* ===== VARIABLES ===== */
 :root {
-  --bg: #0d0d0d;
-  --surface: #161616;
-  --surface2: #1f1f1f;
-  --border: #2a2a2a;
-  --text: #f0ece4;
-  --text-muted: #888;
-  --accent: #e8c97a;
-  --accent2: #c45c3e;
-  --accent-glow: rgba(232,201,122,0.15);
+  --bg: rgb(129, 166, 198);
+  --surface: rgba(255, 255, 255, 0.18);
+  --surface2: rgba(255, 255, 255, 0.25);
+  --border: rgba(255, 255, 255, 0.2);
+
+  --text: #ffffff;
+  --text-muted: rgba(255, 255, 255, 0.75);
+
+  --accent: #ffffff;
+  --accent2: rgb(85, 120, 160);
+  --accent-glow: rgba(255, 255, 255, 0.2);
+
   --danger: #e05555;
   --danger-glow: rgba(224,85,85,0.2);
+
   --radius: 14px;
   --transition: 0.25s cubic-bezier(0.4,0,0.2,1);
+
   --font-display: 'Playfair Display', serif;
   --font-body: 'DM Sans', sans-serif;
-  --shadow: 0 8px 32px rgba(0,0,0,0.5);
+
+  --shadow: 0 8px 32px rgba(0,0,0,0.2);
 }
 
 /* ===== RESET ===== */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; }
 body {
-  background: var(--bg);
+  background: linear-gradient(
+    135deg,
+    rgb(129, 166, 198) 0%,
+    rgb(110, 150, 185) 50%,
+    rgb(90, 130, 170) 100%
+  );
   color: var(--text);
   font-family: var(--font-body);
   font-weight: 300;
@@ -363,9 +374,16 @@ textarea { resize: vertical; }
 /* ===== PROFILE PAGE ===== */
 .profile-hero { max-width: 1300px; margin: 0 auto; padding: 0 2.5rem; }
 .profile-banner {
-  height: 220px; border-radius: 0 0 var(--radius) var(--radius);
-  background: linear-gradient(135deg, #1a1010 0%, #1f1a0d 50%, #0d1218 100%);
-  position: relative; overflow: hidden;
+  height: 220px;
+  border-radius: 0 0 var(--radius) var(--radius);
+  background: linear-gradient(
+    135deg,
+    rgb(129, 166, 198) 0%,
+    rgb(100, 140, 180) 50%,
+    rgb(75, 110, 150) 100%
+  );
+  position: relative;
+  overflow: hidden;
 }
 .profile-banner::before {
   content: ''; position: absolute; inset: 0;
